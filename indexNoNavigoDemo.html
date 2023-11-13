@@ -14,10 +14,10 @@
 
 <body>
   <nav>
-    <button id="btn-signup" class="btn btn-primary">Sign up</button>
-    <input type="text" id="username" hidden>
-    <input type="password" id="password" hidden>
+    <button id="btn-signup" type="button" class="btn btn-primary">Sign up</button>
     <button id="btn-show-login" type="button" class="btn btn-primary">Sign in</button>
+    <button id="btn-fetch" type="button" class="btn btn-secondary">Fecth data</button>
+    <button id="btn-get-secret" type="button" class="brn btn-danger">Get Secret</button>
   </nav>
   <div class="container mt-5">
       <table class="table">
@@ -72,6 +72,11 @@
     const tblRows = document.getElementById('tbl-rows');
     let sortDirection = 'asc'
 
+    document.getElementById('btn-get-secret').onclick = getSecret;
+
+    document.getElementById('btn-fetch').onclick = function(evt){
+      fetchData();
+    }
 
     document.getElementById('btn-form-login').onclick = function (evt) {
       evt.preventDefault();
@@ -135,18 +140,28 @@
       }
       console.log(`fetch(${API_ENDPOINT}?page=${page}&size=${size}&sort=${sortColumn},${sortDirection}, ${makeOptions('GET', null, getToken())})`);
       try {
-        const data = await fetch(`${API_ENDPOINT}?page=${page}&size=${size}&sort=${sortColumn},${sortDirection}`, makeOptions('GET', null, getToken()))
+        const fetchUrl = `${API_ENDPOINT}?page=${page}&size=${size}&sort=${sortColumn},${sortDirection}`;
+        const token = getToken();
+        const data = await fetch(fetchUrl,
+                {
+                  method: "GET",
+                  headers: {
+                    'content-type': 'application/json',
+                    'Authorization': 'Bearer ' + token
+                  }
+                })
                 .then(handleHttpErrors)
         //.then(response => response.json()) //TODO: Handle error cases
 
         displayData(data.content);
         displayPagination(data.totalPages, page);
       } catch (err) {
-        if (err.apiError){
-          console.log("Full API error: ", err.apiError)
-        } else {
-          console.log(err.message)
-        }
+        console.log(err);
+         if (err.apiError){
+           console.log("Full API error: ", err.apiError)
+         } else {
+           console.log(err.message)
+         }
       }
     }
 
@@ -186,14 +201,15 @@
       }
     };
 
-    fetchData();//Initial call to the backend only returns if logged in
+    // fetchData();//Initial call to the backend only returns if logged in
 
     async function handleHttpErrors(res) {
       if (!res.ok) {
-        const errorResponse = await res.json();
-        const error = new Error(errorResponse.message)
-        error.apiError = errorResponse
-        throw error
+        //const errorResponse = await res.json();
+        //const error = new Error(errorResponse.message)
+        //error.apiError = errorResponse
+        //throw error
+        console.log(res.status);
       }
       return res.json()
     }
@@ -229,7 +245,7 @@
       return opts;
     }
 
-    function signup() {
+    async function signup() {
       const usernameField = document.getElementById("username-field").value;
       const passwordField = document.getElementById("password-field").value;
       let payload = {
@@ -237,11 +253,9 @@
         password: passwordField
       };
       try {
-        fetch(API_SIGNUP,
+        await fetch(API_SIGNUP,
                 makeOptions('POST', payload, null))
                 .then(handleHttpErrors)
-                //Nofity user
-                //printThis(div, JSON.stringify(data), "green")
       } catch (err) {
         if (err.apiError){
           console.log("Full API error: ", err.apiError)
@@ -251,7 +265,7 @@
       }
     }
 
-    function login() {
+    async function login() {
       //event.preventDefault()
       const usernameField = document.getElementById("username-field").value;
       const passwordField = document.getElementById("password-field").value;
@@ -261,7 +275,7 @@
       };
       payload = JSON.stringify(payload)
       try {
-        const data = fetch(API_LOGIN,
+        const data = await fetch(API_LOGIN,
                 {
                   method: "POST",
                   body: payload,
@@ -269,7 +283,8 @@
                 })
                 .then(handleHttpErrors)
         localStorage.setItem('user', JSON.stringify(data));
-        fetchData();
+        console.log("user: " + data);
+        //fetchData();
       } catch (e) {
         if (err.apiError){
           console.log("Full API error: ", err.apiError)
@@ -307,6 +322,42 @@
                 console.log(JSON.stringify(res));
               })
     }
+
+    function myFetch(endpoint, method, payload=null, token){
+      return fetch(`http://localhost:8080/${endpoint}`,  // important to start this line with 'return'
+              {
+                method: method,
+                body: payload,
+                headers:{'content-type': 'application/json',
+                  'Authorization': 'Bearer ' + token }
+              })
+              .then(function (res) {
+                return res.json(); // wait for .json() to complete
+              })
+              .then(function (data) { // the data, provided by server response
+                return data
+              })
+    }
+
+    function getSecret(event) {
+      event.preventDefault()
+      if(localStorage.getItem('user') == undefined){
+        console.log("No token. Login first");
+        return
+      }
+
+      const payload = {
+        paramField: '42'
+      };
+      const token = getToken();
+      console.log(token);
+
+      myFetch("getSecret", "POST", payload, getToken())
+              .then((data) => {
+                console.log(JSON.stringify(data))
+              })
+    }
+
   </script>
 
 </body>

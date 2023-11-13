@@ -102,6 +102,8 @@
             const payload = {
                 paramField: paramField
             };
+            const token = getToken();
+            console.log(token);
             myFetch("getSecret", "POST", payload, getToken())
                 .then((data) => {
                     printThis(div, JSON.stringify(data), "green")
